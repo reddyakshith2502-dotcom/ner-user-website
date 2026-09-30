@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NER SMART LOGISTICS // USER & CONSIGNOR PORTAL</title>
+    
+    <!-- GOOGLE FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- LEAFLET MAP CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root {
+            --bg-deep: #070a12;
+            --bg-panel: rgba(13, 18, 28, 0.92);
+            --glass-border: rgba(56, 189, 248, 0.35);
+            --neon-cyan: #38bdf8;
+            --neon-green: #34d399;
+            --neon-amber: #fbbf24;
+            --neon-red: #ef4444;
+            --neon-purple: #c084fc;
+            --text-main: #f8fafc;
+            --text-muted: #cbd5e1;
+            --font-head: 'Outfit', sans-serif;
+            --font-data: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; outline: none; margin: 0; padding: 0; }
+        
+        html, body {
+            height: 100%; width: 100%;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: var(--font-head);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #bg-canvas-user {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+            pointer-events: none;
+        }
+
+        .cyber-grid-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+            pointer-events: none;
+            background: 
+                radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
+                radial-gradient(circle at 20% 80%, rgba(52, 211, 153, 0.08) 0%, transparent 60%),
+                linear-gradient(rgba(7, 10, 18, 0.9), rgba(7, 10, 18, 0.95));
+        }
+
+        #app-wrapper {
+            display: flex; min-height: 100vh; width: 100vw;
+            position: relative; z-index: 10;
+        }
+
+        /* SIDEBAR NAVIGATION */
+        #side-nav {
+            width: 290px; min-width: 290px; height: 100vh; position: sticky; top: 0;
+            background: rgba(6, 12, 26, 0.96);
+            backdrop-filter: blur(25px);
+            border-right: 2px solid var(--glass-border);
+            display: flex; flex-direction: column;
+            padding: 20px 16px; gap: 10px;
+            z-index: 100; overflow-y: auto;
+            box-shadow: 10px 0 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .brand-block {
+            padding: 0 4px 16px;
+            border-bottom: 2px solid var(--glass-border);
+            margin-bottom: 6px;
+        }
+        .brand-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-family: var(--font-data); font-size: 10px; font-weight: 800;
+            color: var(--neon-cyan); background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--neon-cyan); border-radius: 4px;
+            padding: 4px 8px; margin-bottom: 6px; letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+        .brand-title {
+            font-size: 24px; font-weight: 900; line-height: 1.15; margin: 2px 0; letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #ffffff 0%, #38bdf8 50%, #34d399 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+
+        .nav-tab {
+            width: 100%; border: 1.5px solid rgba(255, 255, 255, 0.06); background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted); font-family: var(--font-head); font-weight: 800; font-size: 13px;
+            padding: 12px 14px; border-radius: 10px; cursor: pointer;
+            display: flex; align-items: center; gap: 10px; text-transform: uppercase;
+            letter-spacing: 0.5px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .nav-tab .nav-icon { font-size: 18px; }
+        .nav-tab:hover {
+            color: #fff; background: rgba(56, 189, 248, 0.15);
+            border-color: var(--neon-cyan); transform: translateX(4px);
+        }
+        .nav-tab.active {
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            color: #ffffff; border-color: var(--neon-cyan);
+            box-shadow: 0 6px 25px rgba(2, 132, 199, 0.5);
+            transform: translateX(4px);
+        }
+
+        /* MAIN TOP HEADER BAR */
+        #main-content {
+            flex: 1; min-height: 100vh; position: relative; overflow-y: auto;
+            padding: 24px 30px 40px; box-sizing: border-box;
+        }
+
+        .top-header-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(13, 18, 28, 0.9); border: 1.5px solid var(--glass-border);
+            border-radius: 14px; padding: 14px 22px; margin-bottom: 24px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4); backdrop-filter: blur(15px);
+        }
+        .header-status {
+            display: flex; align-items: center; gap: 12px; font-family: var(--font-data); font-size: 12px; font-weight: 700;
+        }
+        .status-dot-pulse {
+            width: 10px; height: 10px; border-radius: 50%; background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green); animation: pulseDot 1.5s infinite;
+        }
+        @keyframes pulseDot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.3); opacity: 0.6; } }
+
+        .header-actions {
+            display: flex; align-items: center; gap: 14px;
+        }
+
+        .content-view {
+            display: none; animation: fadeIn 0.4s ease;
+        }
+        .content-view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .glass-card {
+            background: var(--bg-panel);
+            border: 1.5px solid var(--glass-border);
+            border-radius: 16px; padding: 28px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            margin-bottom: 24px;
+        }
+
+        .panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 22px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 16px; flex-wrap: wrap; gap: 12px;
+        }
+        .panel-title {
+            font-size: 24px; font-weight: 900; color: #fff; text-transform: uppercase;
+            letter-spacing: 0.8px; display: flex; align-items: center; gap: 12px;
+            background: linear-gradient(135deg, #ffffff 0%, #38bdf8 60%, #34d399 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .tracker-search-box {
+            display: flex; gap: 12px; margin-bottom: 20px;
+        }
+        .tracker-input {
+            flex: 1; background: rgba(3, 7, 18, 0.8); border: 2px solid var(--glass-border);
+            border-radius: 10px; padding: 14px 18px; color: #fff; font-family: var(--font-data);
+            font-size: 15px; font-weight: 700; letter-spacing: 1px; transition: all 0.3s;
+        }
+        .tracker-input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }
+
+        .action-btn {
+            border: none; padding: 13px 22px;
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            color: #ffffff; font-family: var(--font-head); font-weight: 800; font-size: 13.5px;
+            text-transform: uppercase; letter-spacing: 0.8px; border-radius: 10px;
+            cursor: pointer; transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(2, 132, 199, 0.4);
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .action-btn:hover { background: linear-gradient(135deg, #38bdf8, #0284c7); transform: translateY(-2px); box-shadow: 0 6px 25px rgba(56, 189, 248, 0.5); }
+
+        .chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+        .chip {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--neon-cyan); padding: 6px 12px; border-radius: 20px;
+            font-family: var(--font-data); font-size: 11px; font-weight: 700; cursor: pointer;
+            transition: all 0.25s;
+        }
+        .chip:hover, .chip.active { background: rgba(56, 189, 248, 0.25); border-color: var(--neon-cyan); color: #fff; transform: scale(1.04); }
+
+        .tracking-card {
+            background: rgba(15, 23, 42, 0.9); border: 1.5px solid var(--neon-cyan);
+            border-radius: 14px; padding: 22px; margin-top: 20px; display: none;
+            box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2);
+        }
+        .tracking-card.active { display: block; animation: fadeIn 0.3s ease; }
+
+        .timeline { display: flex; justify-content: space-between; margin: 25px 0; position: relative; }
+        .timeline::before {
+            content: ""; position: absolute; top: 15px; left: 10%; right: 10%; height: 3px;
+            background: rgba(56, 189, 248, 0.3); z-index: 0;
+        }
+        .timeline-step {
+            position: relative; z-index: 1; text-align: center; font-family: var(--font-data);
+        }
+        .t-dot {
+            width: 30px; height: 30px; border-radius: 50%; background: #0f172a;
+            border: 2px solid var(--neon-cyan); margin: 0 auto 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+        }
+        .timeline-step.completed .t-dot { background: var(--neon-green); border-color: var(--neon-green); color: #000; }
+        .timeline-step.active .t-dot { background: var(--neon-cyan); border-color: #fff; box-shadow: 0 0 15px var(--neon-cyan); color: #000; }
+        .t-label { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+
+        .form-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block; font-family: var(--font-data); font-size: 12px; color: var(--neon-cyan);
+            margin-bottom: 8px; font-weight: 700; text-transform: uppercase;
+        }
+        .form-control {
+            width: 100%; background: rgba(3, 7, 18, 0.8); border: 1.5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px; padding: 12px 14px; color: #fff; font-family: var(--font-head);
+            font-size: 14px; font-weight: 600; transition: all 0.3s;
+        }
+        .form-control:focus { border-color: var(--neon-cyan); }
+
+        /* EVENTS GRID */
+        .events-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 18px;
+        }
+        .event-card {
+            background: rgba(15, 23, 42, 0.9); border: 1.5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px; padding: 22px; transition: all 0.3s; position: relative; overflow: hidden;
+        }
+        .event-card:hover {
+            border-color: var(--neon-cyan); transform: translateY(-4px); box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2);
+        }
+        .event-badge {
+            font-family: var(--font-data); font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 4px;
+            letter-spacing: 1px; text-transform: uppercase; display: inline-block; margin-bottom: 10px;
+        }
+        .badge-live { background: rgba(52, 211, 153, 0.2); color: var(--neon-green); border: 1px solid var(--neon-green); }
+        .badge-drone { background: rgba(192, 132, 252, 0.2); color: var(--neon-purple); border: 1px solid var(--neon-purple); }
+        .badge-alert { background: rgba(239, 68, 68, 0.2); color: var(--neon-red); border: 1px solid var(--neon-red); }
+        .badge-weather { background: rgba(251, 191, 36, 0.2); color: var(--neon-amber); border: 1px solid var(--neon-amber); }
+
+        /* HOSPITALS GRID */
+        .hospital-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 22px; margin-top: 18px;
+        }
+        .hospital-card {
+            background: rgba(15, 23, 42, 0.92); border: 1.5px solid var(--glass-border);
+            border-radius: 16px; padding: 24px; transition: all 0.3s ease; position: relative;
+        }
+        .hospital-card:hover {
+            border-color: var(--neon-green); transform: translateY(-5px); box-shadow: 0 12px 35px rgba(52, 211, 153, 0.25);
+        }
+        .hospital-title {
+            font-size: 20px; font-weight: 900; color: #fff; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .hospital-location {
+            color: var(--neon-cyan); font-family: var(--font-data); font-size: 12px; font-weight: 700; margin-bottom: 14px;
+        }
+        .hospital-stats-list {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: rgba(3, 7, 18, 0.6);
+            padding: 12px; border-radius: 10px; font-family: var(--font-data); font-size: 11px; margin-bottom: 16px;
+        }
+        .hospital-stats-list div span { color: #94a3b8; display: block; }
+        .hospital-stats-list div strong { color: #fff; font-weight: 700; }
+
+        /* TURN BY TURN STEP ITEM */
+        .turn-step-item {
+            background: rgba(3, 7, 18, 0.7); border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px; padding: 12px; display: flex; gap: 12px; align-items: flex-start;
+            transition: all 0.25s;
+        }
+        .turn-step-item:hover {
+            border-color: var(--neon-cyan); background: rgba(56, 189, 248, 0.08); transform: translateX(3px);
+        }
+        .turn-icon-box {
+            width: 32px; height: 32px; border-radius: 8px; background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--neon-cyan); color: var(--neon-cyan); font-size: 16px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .turn-step-title { font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 2px; }
+        .turn-step-desc { font-size: 11px; color: var(--text-muted); line-height: 1.35; }
+
+        /* FLOATING AI CHATBOT WIDGET */
+        #chatbot-trigger {
+            position: fixed; bottom: 26px; right: 26px; z-index: 9999;
+            width: 62px; height: 62px; border-radius: 50%;
+            background: linear-gradient(135deg, #0284c7, #38bdf8);
+            border: 2px solid #ffffff; color: #fff; font-size: 28px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 8px 30px rgba(56, 189, 248, 0.6);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: botPulse 3s infinite;
+        }
+        #chatbot-trigger:hover { transform: scale(1.12) rotate(10deg); }
+        @keyframes botPulse { 0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.6); } 50% { box-shadow: 0 0 35px rgba(56, 189, 248, 0.9); } }
+
+        #chatbot-modal {
+            position: fixed; bottom: 98px; right: 26px; z-index: 9999;
+            width: 400px; max-width: calc(100vw - 32px); height: 540px; max-height: calc(100vh - 120px);
+            background: rgba(10, 16, 30, 0.96); border: 2px solid var(--neon-cyan);
+            border-radius: 20px; box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
+            display: none; flex-direction: column; overflow: hidden;
+            backdrop-filter: blur(25px); animation: chatPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #chatbot-modal.active { display: flex; }
+        @keyframes chatPop { from { opacity: 0; transform: scale(0.8) translateY(30px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        .chat-header {
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+            color: #fff; border-bottom: 1px solid var(--glass-border);
+        }
+        .chat-header-title { font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+        .chat-close-btn { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; opacity: 0.8; }
+        .chat-close-btn:hover { opacity: 1; }
+
+        .chat-body {
+            flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+            background: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.8), rgba(7, 10, 18, 0.95));
+        }
+        .chat-msg {
+            max-width: 85%; padding: 12px 16px; border-radius: 14px; font-size: 13px; line-height: 1.45;
+            font-family: var(--font-head); animation: msgSlide 0.25s ease;
+        }
+        @keyframes msgSlide { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .chat-msg.bot {
+            background: rgba(30, 41, 59, 0.9); color: #f8fafc; border: 1px solid var(--glass-border);
+            align-self: flex-start; border-bottom-left-radius: 4px;
+        }
+        .chat-msg.user {
+            background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff;
+            align-self: flex-end; border-bottom-right-radius: 4px; font-weight: 600;
+        }
+
+        .chat-quick-chips {
+            display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px;
+        }
+        .qchip {
+            background: rgba(56, 189, 248, 0.12); border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan); font-family: var(--font-data); font-size: 10.5px; font-weight: 700;
+            padding: 5px 10px; border-radius: 12px; cursor: pointer; transition: all 0.2s;
+        }
+        .qchip:hover { background: var(--neon-cyan); color: #000; }
+
+        .chat-footer {
+            padding: 12px 14px; background: rgba(6, 12, 26, 0.98); border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex; gap: 8px; align-items: center;
+        }
+        .chat-input {
+            flex: 1; background: rgba(3, 7, 18, 0.8); border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px; padding: 10px 16px; color: #fff; font-family: var(--font-head);
+            font-size: 13px;
+        }
+        .chat-input:focus { border-color: var(--neon-cyan); }
+        .chat-send-btn {
+            background: var(--neon-cyan); border: none; color: #000; width: 36px; height: 36px;
+            border-radius: 50%; font-weight: 900; font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: transform 0.2s;
+        }
+        .chat-send-btn:hover { transform: scale(1.1); }
+
+        .hazard-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;
+        }
+        .hazard-card {
+            background: rgba(15, 23, 42, 0.85); border: 1.5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px; padding: 20px; transition: all 0.3s;
+        }
+        .hazard-card:hover { border-color: var(--neon-cyan); transform: translateY(-4px); box-shadow: 0 10px 25px rgba(56, 189, 248, 0.2); }
+        .pass-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .pass-title { font-size: 16px; font-weight: 800; color: #fff; }
+        .hazard-badge { font-family: var(--font-data); font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; }
+        .badge-safe { background: rgba(52, 211, 153, 0.2); color: var(--neon-green); border: 1px solid var(--neon-green); }
+        .badge-warn { background: rgba(251, 191, 36, 0.2); color: var(--neon-amber); border: 1px solid var(--neon-amber); }
+        .badge-danger { background: rgba(239, 68, 68, 0.2); color: var(--neon-red); border: 1px solid var(--neon-red); }
+
+        .sos-box {
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, rgba(13, 18, 28, 0.95) 70%);
+            border: 2px solid var(--neon-red); border-radius: 16px; padding: 35px; text-align: center;
+            box-shadow: 0 0 35px rgba(239, 68, 68, 0.3);
+        }
+        .sos-btn-big {
+            width: 140px; height: 140px; border-radius: 50%;
+            background: linear-gradient(135deg, #ef4444, #991b1b);
+            border: 4px solid #fff; color: #fff; font-size: 26px; font-weight: 900;
+            cursor: pointer; margin: 20px auto; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 4px;
+            box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
+            transition: all 0.3s ease; animation: sosPulse 2s infinite;
+        }
+        .sos-btn-big:hover { transform: scale(1.08); box-shadow: 0 0 60px rgba(239, 68, 68, 0.9); }
+        @keyframes sosPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas-user"></canvas>
+    <div class="cyber-grid-overlay"></div>
+
+    <div id="app-wrapper">
+        
+        <!-- SIDE NAVIGATION BAR -->
+        <nav id="side-nav">
+            <div class="brand-block">
+                <div class="brand-badge"><span>🚀</span> USER PORTAL</div>
+                <div class="brand-title">NER LOGISTICS</div>
+                <div style="font-size:11px; color:var(--neon-cyan); font-family:var(--font-data); font-weight:800;">CRAZY &amp; ULTIMATE CONVOY HUB</div>
+            </div>
+
+            <button class="nav-tab active" onclick="switchUserTab('tracker')" id="utab-tracker">
+                <span class="nav-icon">🔍</span> Package Tracker HUD
+            </button>
+            <button class="nav-tab" onclick="switchUserTab('planner')" id="utab-planner">
+                <span class="nav-icon">🗺️</span> Realistic Satellite Map &amp; Nav
+            </button>
+            <button class="nav-tab" onclick="switchUserTab('events')" id="utab-events">
+                <span class="nav-icon">⚡</span> Northeast Live Events
+            </button>
+            <button class="nav-tab" onclick="switchUserTab('hospitals')" id="utab-hospitals">
+                <span class="nav-icon">🏥</span> Apex Hospitals &amp; Drones
+            </button>
+            <button class="nav-tab" onclick="switchUserTab('booking')" id="utab-booking">
+                <span class="nav-icon">📦</span> AI Cargo Booking
+            </button>
+            <button class="nav-tab" onclick="switchUserTab('hazards')" id="utab-hazards">
+                <span class="nav-icon">🏔️</span> Mountain Pass Feed
+            </button>
+            <button class="nav-tab" onclick="switchUserTab('sos')" id="utab-sos">
+                <span class="nav-icon">🚨</span> Emergency SOS
+            </button>
+        </nav>
+
+        <!-- MAIN CONTENT AREA -->
+        <main id="main-content">
+            
+            <!-- TOP NEAT HEADER BAR -->
+            <div class="top-header-bar">
+                <div class="header-status">
+                    <div class="status-dot-pulse"></div>
+                    <div>
+                        <span style="color:var(--neon-cyan);">LIVE LOGISTICS NETWORK:</span>
+                        <strong style="color:#fff;">ALL 8 NORTH EAST STATES ACTIVE</strong>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <span style="font-family:var(--font-data); font-size:12px; color:var(--text-muted);" id="live-clock">13:26:43 IST</span>
+                    <button class="action-btn" onclick="openChatbotModal()" style="padding:7px 14px; font-size:12px; background:rgba(56, 189, 248, 0.15); border:1px solid var(--neon-cyan);">
+                        <span>💬</span> Ask AI Assistant
+                    </button>
+                    <button class="action-btn" onclick="switchUserTab('sos')" style="padding:7px 14px; font-size:12px; background:rgba(239, 68, 68, 0.2); border:1px solid var(--neon-red); color:var(--neon-red);">
+                        <span>🚨</span> Emergency 24x7
+                    </button>
+                </div>
+            </div>
+
+            <!-- VIEW 1: LIVE PACKAGE TRACKER HUD -->
+            <div id="uview-tracker" class="content-view active">
+                <div class="glass-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><span style="font-size:26px;">🔍</span> Live Shipment &amp; Convoy Tracking HUD</div>
+                        <span style="font-size:12px; color:var(--neon-green); font-family:var(--font-data); font-weight:800;">● REAL-TIME GPS ACTIVE</span>
+                    </div>
+
+                    <p style="color:var(--text-muted); margin-bottom:16px; font-size:14px;">
+                        Enter any shipment ID, medical cold-chain tracking code, or drone serial number across North East India:
+                    </p>
+
+                    <div class="tracker-search-box">
+                        <input type="text" id="track-input" class="tracker-input" placeholder="e.g. AS-01-EC-9082, AS-01-OX-4011, NER-DRONE-01..." value="AS-01-EC-9082">
+                        <button class="action-btn" onclick="executeTrackLookup()"><span>🔍</span> Track Now</button>
+                    </div>
+
+                    <div class="chip-group">
+                        <span style="font-size:11px; color:#94a3b8; font-family:var(--font-data); align-self:center;">QUICK SAMPLE CODES:</span>
+                        <span class="chip" onclick="quickTrack('AS-01-EC-9082')">🚚 AS-01-EC-9082 (Vaccines)</span>
+                        <span class="chip" onclick="quickTrack('AS-01-OX-4011')">❄️ AS-01-OX-4011 (Medical O₂)</span>
+                        <span class="chip" onclick="quickTrack('NL-01-FC-7721')">🌾 NL-01-FC-7721 (Food Grains)</span>
+                        <span class="chip" onclick="quickTrack('NER-DRONE-01')">🛸 NER-DRONE-01 (Medical VTOL)</span>
+                    </div>
+
+                    <!-- RESULT CARD -->
+                    <div id="track-result-card" class="tracking-card">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:14px;">
+                            <div>
+                                <h3 id="tr-title" style="font-size:22px; font-weight:900; color:#fff;">AS-01-EC-9082</h3>
+                                <p id="tr-desc" style="color:var(--neon-cyan); font-family:var(--font-data); font-size:13px; font-weight:700; margin-top:4px;">Assam Medical Transport Hub • 5,000 Cold-Chain Vaccine Doses</p>
+                            </div>
+                            <span id="tr-badge" class="badge-safe" style="font-family:var(--font-data); font-size:12px; font-weight:800; padding:6px 12px; border-radius:6px;">ON TIME</span>
+                        </div>
+
+                        <!-- TIMELINE -->
+                        <div class="timeline">
+                            <div class="timeline-step completed">
+                                <div class="t-dot">✓</div>
+                                <div class="t-label">Guwahati Depot</div>
+                            </div>
+                            <div class="timeline-step completed">
+                                <div class="t-dot">✓</div>
+                                <div class="t-label">Nongpoh Transit</div>
+                            </div>
+                            <div class="timeline-step active">
+                                <div class="t-dot">🚚</div>
+                                <div class="t-label">NH-6 Shillong Pass</div>
+                            </div>
+                            <div class="timeline-step">
+                                <div class="t-dot">📍</div>
+                                <div class="t-label">NEIGRIHMS Shillong</div>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; background:rgba(3,7,18,0.6); padding:14px; border-radius:10px; font-family:var(--font-data); font-size:12px;">
+                            <div><span style="color:#94a3b8;">SPEED:</span> <strong id="tr-speed" style="color:#fff;">46 km/h</strong></div>
+                            <div><span style="color:#94a3b8;">ETA:</span> <strong id="tr-eta" style="color:var(--neon-green);">1h 15m</strong></div>
+                            <div><span style="color:#94a3b8;">COLD CHAIN TEMP:</span> <strong id="tr-temp" style="color:var(--neon-cyan);">4.1°C (NORMAL)</strong></div>
+                            <div><span style="color:#94a3b8;">ROUTE RISK:</span> <strong style="color:var(--neon-green);">LOW HAZARD</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: REALISTIC SATELLITE MAP & TURN-BY-TURN ROUTE PLANNER -->
+            <div id="uview-planner" class="content-view">
+                <div class="glass-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><span style="font-size:26px;">🗺️</span> Realistic Satellite Map &amp; Turn-by-Turn Navigation</div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="action-btn" onclick="switchMapTileLayer('satellite')" id="btn-tile-sat" style="padding:6px 12px; font-size:11px;">🛰️ Satellite HD</button>
+                            <button class="action-btn" onclick="switchMapTileLayer('dark')" id="btn-tile-dark" style="padding:6px 12px; font-size:11px; background:rgba(255,255,255,0.08);">🌌 Cyber Dark</button>
+                            <button class="action-btn" onclick="switchMapTileLayer('street')" id="btn-tile-street" style="padding:6px 12px; font-size:11px; background:rgba(255,255,255,0.08);">🗺️ Topo Streets</button>
+                        </div>
+                    </div>
+
+                    <!-- ROUTE SELECTION & NAVIGATION CONTROL BAR -->
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; background:rgba(3,7,18,0.7); padding:16px; border-radius:12px; border:1px solid var(--glass-border); margin-bottom:18px;">
+                        <div>
+                            <label style="font-family:var(--font-data); font-size:11px; color:var(--neon-cyan); font-weight:700; display:block; margin-bottom:4px;">ORIGIN LOCATION</label>
+                            <select id="nav-origin-select" class="form-control" style="padding:8px 12px; font-size:13px;" onchange="updateCustomRouteNav()">
+                                <option value="guwahati">Guwahati Freight Hub (Assam)</option>
+                                <option value="gangtok">Gangtok Airbase (Sikkim)</option>
+                                <option value="silchar">Silchar Cargo Hub (Barak Valley)</option>
+                                <option value="dimapur">Dimapur Logistics Yard (Nagaland)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-family:var(--font-data); font-size:11px; color:var(--neon-cyan); font-weight:700; display:block; margin-bottom:4px;">DESTINATION TARGET</label>
+                            <select id="nav-dest-select" class="form-control" style="padding:8px 12px; font-size:13px;" onchange="updateCustomRouteNav()">
+                                <option value="shillong">NEIGRIHMS Shillong (Meghalaya)</option>
+                                <option value="nathula">Nathu La Border Sector (Sikkim - 14,140 ft)</option>
+                                <option value="tawang">Tawang Altitude Base (Arunachal - 13,700 ft)</option>
+                                <option value="imphal">Imphal Regional Depot (Manipur)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-family:var(--font-data); font-size:11px; color:var(--neon-cyan); font-weight:700; display:block; margin-bottom:4px;">CONVOY / DISPATCH TYPE</label>
+                            <select id="nav-type-select" class="form-control" style="padding:8px 12px; font-size:13px;" onchange="updateCustomRouteNav()">
+                                <option value="coldchain">🚚 Cold-Chain Vaccine Convoy</option>
+                                <option value="cryo">❄️ Cryogenic Liquid O₂ Tanker</option>
+                                <option value="drone">🚁 VTOL Heavy Drone Air-Drop</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; align-items:flex-end;">
+                            <button class="action-btn" onclick="startSimulatedNavigation()" style="width:100%; padding:10px; font-size:12px; background:linear-gradient(135deg, #34d399, #059669); color:#000; font-weight:900;">
+                                ▶ START VOICE NAVIGATION
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SPLIT CONTAINER: REALISTIC MAP + TURN-BY-TURN DIRECTIONS PANEL -->
+                    <div style="display:grid; grid-template-columns: 2.2fr 1.1fr; gap:18px; min-height:540px;">
+                        <!-- REALISTIC MAP CONTAINER -->
+                        <div style="position:relative;">
+                            <div id="map-user" style="height:540px; border-radius:14px; border:1.5px solid var(--glass-border);"></div>
+                            
+                            <!-- OVERLAY MAP INFO HUD -->
+                            <div style="position:absolute; bottom:16px; left:16px; z-index:1000; background:rgba(6,12,26,0.94); border:1.5px solid var(--neon-cyan); border-radius:10px; padding:12px 16px; font-family:var(--font-data); font-size:11px; backdrop-filter:blur(10px); box-shadow:0 6px 20px rgba(0,0,0,0.6);">
+                                <div style="color:#94a3b8;">ACTIVE MAP LAYER: <strong id="hud-tile-name" style="color:var(--neon-cyan);">Esri Realistic Satellite HD</strong></div>
+                                <div style="color:#94a3b8; margin-top:3px;">TOTAL DISTANCE: <strong id="hud-route-dist" style="color:#fff;">98.4 km</strong> • EST. TIME: <strong id="hud-route-time" style="color:var(--neon-green);">2h 15m</strong></div>
+                                <div style="color:#94a3b8; margin-top:3px;">ELEVATION CLIMB: <strong id="hud-route-elev" style="color:var(--neon-amber);">180m ➔ 1,490m (+1,310m)</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- TURN-BY-TURN DIRECTIONS PANEL -->
+                        <div style="background:rgba(15, 23, 42, 0.95); border:1.5px solid var(--glass-border); border-radius:14px; padding:18px; display:flex; flex-direction:column; max-height:540px; overflow-y:auto;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; margin-bottom:12px;">
+                                <h4 style="font-size:15px; font-weight:800; color:#fff; text-transform:uppercase;">🧭 Directions List</h4>
+                                <span id="nav-step-count" class="badge-safe" style="font-size:10px; font-family:var(--font-data);">4 STEPS</span>
+                            </div>
+
+                            <div id="directions-list-container" style="display:flex; flex-direction:column; gap:10px; flex:1;">
+                                <!-- Dynamically populated turn-by-turn directions -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 3: WHAT'S HAPPENING IN NORTH EAST INDIA (EVENTS & CORRIDORS) -->
+            <div id="uview-events" class="content-view">
+                <div class="glass-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><span style="font-size:26px;">⚡</span> What's Happening in North East India Logistical Highways</div>
+                        <span style="font-size:12px; color:var(--neon-green); font-family:var(--font-data); font-weight:800;">LIVE DISPATCH PULSE</span>
+                    </div>
+
+                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">
+                        Real-time verified updates on major highway corridors, medical air-drops, mountain pass weather alerts, and high-priority logistics operations across all 8 North Eastern states:
+                    </p>
+
+                    <div class="chip-group">
+                        <span class="chip active" onclick="filterEvents('all', this)">All Real-time Ops</span>
+                        <span class="chip" onclick="filterEvents('medical', this)">🏥 Medical Corridors</span>
+                        <span class="chip" onclick="filterEvents('drone', this)">🚁 Drone Air-Drops</span>
+                        <span class="chip" onclick="filterEvents('highway', this)">🛣️ Highway Status</span>
+                        <span class="chip" onclick="filterEvents('weather', this)">🌧️ Weather Warnings</span>
+                    </div>
+
+                    <div class="events-grid" id="events-container">
+                        
+                        <!-- Event 1 -->
+                        <div class="event-card" data-category="medical">
+                            <span class="event-badge badge-live">● LIVE OPERATIONAL</span>
+                            <h4 style="font-size:18px; font-weight:800; color:#fff; margin-bottom:6px;">Guwahati to Shillong Green Corridor Active</h4>
+                            <p style="color:var(--text-muted); font-size:13px; line-height:1.5; margin-bottom:12px;">
+                                Dedicated non-stop priority lane opened on NH-6 transporting 5,000 vaccine doses from Guwahati Medical Hub to NEIGRIHMS Shillong. Traffic escort in position.
+                            </p>
+                            <div style="font-family:var(--font-data); font-size:11px; color:var(--neon-cyan); display:flex; justify-content:space-between;">
+                                <span>LOCATION: NH-6 Corridor</span>
+                                <span>UPDATED: 5 Mins Ago</span>
+                            </div>
+                        </div>
+
+                        <!-- Event 2 -->
+                        <div class="event-card" data-category="drone">
+                            <span class="event-badge badge-drone">🚁 AERIAL DRONE MISSION</span>
+                            <h4 style="font-size:18px; font-weight:800; color:#fff; margin-bottom:6px;">Tawang Mountain VTOL Drone Air-Drop Successful</h4>
+                            <p style="color:var(--text-muted); font-size:13px; line-height:1.5; margin-bottom:12px;">
+                                High-altitude SkyLifter VTOL drone completed emergency blood plasma and anti-venom delivery to Tawang High-Altitude Base at 13,700 ft elevation amidst freezing conditions.
+                            </p>
+                            <div style="font-family:var(--font-data); font-size:11px; color:var(--neon-purple); display:flex; justify-content:space-between;">
+                                <span>LOCATION: Sela Pass Sector</span>
+                                <span>ALTITUDE: 13,700 FT</span>
+                            </div>
+                        </div>
+
+                        <!-- Event 3 -->
+                        <div class="event-card" data-category="weather">
+                            <span class="event-badge badge-weather">⚠️ WEATHER ALERT</span>
+                            <h4 style="font-size:18px; font-weight:800; color:#fff; margin-bottom:6px;">Dense Fog &amp; Sub-Zero Icing at Nathu La Pass</h4>
+                            <p style="color:var(--text-muted); font-size:13px; line-height:1.5; margin-bottom:12px;">
+                                Heavy fog reducing visibility to under 150m near Gangtok-Nathu La Border Sector. Heavy trucks advised to equip anti-skid tire chains and low-beam fog lamps.
+                            </p>
+                            <div style="font-family:var(--font-data); font-size:11px; color:var(--neon-amber); display:flex; justify-content:space-between;">
+                                <span>LOCATION: Sikkim East</span>
+                                <span>TEMP: -2.4°C</span>
+                            </div>
+                        </div>
+
+                        <!-- Event 4 -->
+                        <div class="event-card" data-category="highway">
+                            <span class="event-badge badge-live">● EXPRESS ROUTE OPEN</span>
+                            <h4 style="font-size:18px; font-weight:800; color:#fff; margin-bottom:6px;">Silchar-Imphal National Highway NH-37 Fully Operational</h4>
+                            <p style="color:var(--text-muted); font-size:13px; line-height:1.5; margin-bottom:12px;">
+                                Border Roads Organisation (BRO) cleared minor mudslides along the Barak River Bridge section. Essential food grain convoys for Manipur are proceeding smoothly.
+                            </p>
+                            <div style="font-family:var(--font-data); font-size:11px; color:var(--neon-green); display:flex; justify-content:space-between;">
+                                <span>LOCATION: NH-37 Silchar-Imphal</span>
+                                <span>STATUS: CLEAR PASSAGE</span>
+                            </div>
+                        </div>
+
+                        <!-- Event 5 -->
+                        <div class="event-card" data-category="medical">
+                            <span class="event-badge badge-live">❄️ CRYO-O₂ TANKER TRANSIT</span>
+                            <h4 style="font-size:18px; font-weight:800; color:#fff; margin-bottom:6px;">18-Ton Liquid Oxygen Tanker En Route to Agartala</h4>
+                            <p style="color:var(--text-muted); font-size:13px; line-height:1.5; margin-bottom:12px;">
+                                Cryogenic Oxygen Convoy (AS-01-OX-4011) monitored with telemetry sensors maintaining -182.4°C pressure balance bound for Agartala Govt Medical College.
+                            </p>
+                            <div style="font-family:var(--font-data); font-size:11px; color:var(--neon-cyan); display:flex; justify-content:space-between;">
+                                <span>LOCATION: Badarpur Transit</span>
+                                <span>TEMP: -182.4°C SAFE</span>
+                            </div>
+                        </div>
+
+                        <!-- Event 6 -->
+                        <div class="event-card" data-category="drone">
+                            <span class="event-badge badge-drone">🛸 AUTOMATED RE-SUPPLY</span>
+                            <h4 style="font-size:18px; font-weight:800; color:#fff; margin-bottom:6px;">Autonomous Cargo Drone Launchpad Activated in Dimapur</h4>
+                            <p style="color:var(--text-muted); font-size:13px; line-height:1.5; margin-bottom:12px;">
+                                Dimapur Freight Air-Port has launched 3 autonomous drone units carrying essential vaccines to remote hilly villages in Kohima and Tuensang districts.
+                            </p>
+                            <div style="font-family:var(--font-data); font-size:11px; color:var(--neon-purple); display:flex; justify-content:space-between;">
+                                <span>LOCATION: Nagaland Hub</span>
+                                <span>PAYLOAD: 45 KG EACH</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 4: APEX HOSPITALS & EMERGENCY MEDICAL LOGISTICS -->
+            <div id="uview-hospitals" class="content-view">
+                <div class="glass-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><span style="font-size:26px;">🏥</span> North East Apex Hospitals &amp; Medical Logistics Network</div>
+                        <span style="font-size:12px; color:var(--neon-green); font-family:var(--font-data); font-weight:800;">24x7 EMERGENCY AIR-DROP LINKED</span>
+                    </div>
+
+                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:18px;">
+                        Direct logistical integration with top medical institutions across North East India for cold-chain vaccine delivery, liquid oxygen supply, and instant VTOL drone emergency air-drops:
+                    </p>
+
+                    <div style="display:flex; gap:12px; margin-bottom:20px;">
+                        <input type="text" id="hospital-search" class="tracker-input" placeholder="Search hospital name, city, state, or medical facility..." onkeyup="searchHospitals()">
+                        <button class="action-btn" onclick="searchHospitals()"><span>🔍</span> Search</button>
+                    </div>
+
+                    <div class="hospital-grid" id="hospitals-container">
+
+                        <!-- Hospital 1 -->
+                        <div class="hospital-card" data-name="aiims guwahati assam emergency cold chain oxygen drone pad">
+                            <div class="hospital-title">
+                                <span>🏥 AIIMS Guwahati</span>
+                                <span class="badge-safe" style="font-size:11px; font-weight:800; font-family:var(--font-data); padding:4px 8px; border-radius:4px;">APEX MEDICAL HUB</span>
+                            </div>
+                            <div class="hospital-location">📍 Changsari / Amingaon, Guwahati, Assam</div>
+                            <div class="hospital-stats-list">
+                                <div><span>OXYGEN STORAGE:</span> <strong>50,000 Liters (Full)</strong></div>
+                                <div><span>DRONE LANDING PAD:</span> <strong style="color:var(--neon-green);">ACTIVE 24/7</strong></div>
+                                <div><span>COLD CHAIN BAY:</span> <strong style="color:var(--neon-cyan);">-80°C Cryo Ready</strong></div>
+                                <div><span>EMERGENCY HELPLINE:</span> <strong>+91 361-2800100</strong></div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="action-btn" style="flex:1; padding:10px; font-size:12px;" onclick="requestDroneDrop('AIIMS Guwahati')">🚁 Request Drone Drop</button>
+                                <button class="action-btn" style="padding:10px; font-size:12px; background:rgba(255,255,255,0.08); border:1px solid var(--neon-cyan);" onclick="focusHospitalMap([26.25, 91.68], 'AIIMS Guwahati')">📍 View Map</button>
+                            </div>
+                        </div>
+
+                        <!-- Hospital 2 -->
+                        <div class="hospital-card" data-name="neigrihms shillong meghalaya trauma vaccine center">
+                            <div class="hospital-title">
+                                <span>🏥 NEIGRIHMS Shillong</span>
+                                <span class="badge-safe" style="font-size:11px; font-weight:800; font-family:var(--font-data); padding:4px 8px; border-radius:4px;">SUPER SPECIALTY</span>
+                            </div>
+                            <div class="hospital-location">📍 Mawdiangdiang, Shillong, Meghalaya</div>
+                            <div class="hospital-stats-list">
+                                <div><span>OXYGEN STORAGE:</span> <strong>32,000 Liters</strong></div>
+                                <div><span>HIGH ALTITUDE PAD:</span> <strong style="color:var(--neon-green);">READY (4,900 ft)</strong></div>
+                                <div><span>VACCINE DEPOT:</span> <strong style="color:var(--neon-cyan);">100,000 Doses</strong></div>
+                                <div><span>EMERGENCY HELPLINE:</span> <strong>+91 364-2538025</strong></div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="action-btn" style="flex:1; padding:10px; font-size:12px;" onclick="requestDroneDrop('NEIGRIHMS Shillong')">🚁 Request Drone Drop</button>
+                                <button class="action-btn" style="padding:10px; font-size:12px; background:rgba(255,255,255,0.08); border:1px solid var(--neon-cyan);" onclick="focusHospitalMap([25.57, 91.88], 'NEIGRIHMS Shillong')">📍 View Map</button>
+                            </div>
+                        </div>
+
+                        <!-- Hospital 3 -->
+                        <div class="hospital-card" data-name="silchar medical college smch assam barak valley flood relief">
+                            <div class="hospital-title">
+                                <span>🏥 Silchar Medical College (SMCH)</span>
+                                <span class="badge-warn" style="font-size:11px; font-weight:800; font-family:var(--font-data); padding:4px 8px; border-radius:4px;">FLOOD RELIEF HUB</span>
+                            </div>
+                            <div class="hospital-location">📍 Ghungoor, Silchar, Cachar, Assam</div>
+                            <div class="hospital-stats-list">
+                                <div><span>OXYGEN STORAGE:</span> <strong>25,000 Liters</strong></div>
+                                <div><span>FLOOD RESCUE DOCK:</span> <strong style="color:var(--neon-green);">AMPHIBIOUS READY</strong></div>
+                                <div><span>DISASTER WARD:</span> <strong>350 Emergency Beds</strong></div>
+                                <div><span>EMERGENCY HELPLINE:</span> <strong>+91 3842-240102</strong></div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="action-btn" style="flex:1; padding:10px; font-size:12px;" onclick="requestDroneDrop('SMCH Silchar')">🚁 Request Drone Drop</button>
+                                <button class="action-btn" style="padding:10px; font-size:12px; background:rgba(255,255,255,0.08); border:1px solid var(--neon-cyan);" onclick="focusHospitalMap([24.78, 92.79], 'SMCH Silchar')">📍 View Map</button>
+                            </div>
+                        </div>
+
+                        <!-- Hospital 4 -->
+                        <div class="hospital-card" data-name="agartala government medical college agmc tripura oxygen hub">
+                            <div class="hospital-title">
+                                <span>🏥 AGMC Agartala</span>
+                                <span class="badge-safe" style="font-size:11px; font-weight:800; font-family:var(--font-data); padding:4px 8px; border-radius:4px;">STATE APEX</span>
+                            </div>
+                            <div class="hospital-location">📍 Kunjaban, Agartala, Tripura</div>
+                            <div class="hospital-stats-list">
+                                <div><span>OXYGEN STORAGE:</span> <strong>28,000 Liters</strong></div>
+                                <div><span>CRYO RE-FILL BAY:</span> <strong style="color:var(--neon-cyan);">TANKER CONNECTED</strong></div>
+                                <div><span>DRONE LANDING PAD:</span> <strong style="color:var(--neon-green);">STANDBY</strong></div>
+                                <div><span>EMERGENCY HELPLINE:</span> <strong>+91 381-2356701</strong></div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="action-btn" style="flex:1; padding:10px; font-size:12px;" onclick="requestDroneDrop('AGMC Agartala')">🚁 Request Drone Drop</button>
+                                <button class="action-btn" style="padding:10px; font-size:12px; background:rgba(255,255,255,0.08); border:1px solid var(--neon-cyan);" onclick="focusHospitalMap([23.85, 91.28], 'AGMC Agartala')">📍 View Map</button>
+                            </div>
+                        </div>
+
+                        <!-- Hospital 5 -->
+                        <div class="hospital-card" data-name="stnm hospital gangtok sikkim high altitude hypothermia center">
+                            <div class="hospital-title">
+                                <span>🏥 STNM Hospital Gangtok</span>
+                                <span class="badge-safe" style="font-size:11px; font-weight:800; font-family:var(--font-data); padding:4px 8px; border-radius:4px;">MOUNTAIN TRAUMA</span>
+                            </div>
+                            <div class="hospital-location">📍 Sochagang, Gangtok, Sikkim</div>
+                            <div class="hospital-stats-list">
+                                <div><span>HYPOTHERMIA UNIT:</span> <strong style="color:var(--neon-green);">SPECIALIZED CRITICAL</strong></div>
+                                <div><span>HIGH ALTITUDE O₂:</span> <strong>20,000 Liters</strong></div>
+                                <div><span>WEATHER PAD:</span> <strong style="color:var(--neon-amber);">HEATED HELIPAD</strong></div>
+                                <div><span>EMERGENCY HELPLINE:</span> <strong>+91 3592-202944</strong></div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="action-btn" style="flex:1; padding:10px; font-size:12px;" onclick="requestDroneDrop('STNM Gangtok')">🚁 Request Drone Drop</button>
+                                <button class="action-btn" style="padding:10px; font-size:12px; background:rgba(255,255,255,0.08); border:1px solid var(--neon-cyan);" onclick="focusHospitalMap([27.33, 88.61], 'STNM Gangtok')">📍 View Map</button>
+                            </div>
+                        </div>
+
+                        <!-- Hospital 6 -->
+                        <div class="hospital-card" data-name="naga hospital authority kohima nhak nagaland plasma drone depot">
+                            <div class="hospital-title">
+                                <span>🏥 Naga Hospital (NHAK)</span>
+                                <span class="badge-safe" style="font-size:11px; font-weight:800; font-family:var(--font-data); padding:4px 8px; border-radius:4px;">NAGALAND APEX</span>
+                            </div>
+                            <div class="hospital-location">📍 Kohima, Nagaland</div>
+                            <div class="hospital-stats-list">
+                                <div><span>PLASMA BANK:</span> <strong style="color:var(--neon-cyan);">DRONE DISPATCH READY</strong></div>
+                                <div><span>OXYGEN PLANT:</span> <strong>18,000 Liters</strong></div>
+                                <div><span>HILL CONVOY DOCK:</span> <strong>4x4 Escort Ready</strong></div>
+                                <div><span>EMERGENCY HELPLINE:</span> <strong>+91 370-2222916</strong></div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="action-btn" style="flex:1; padding:10px; font-size:12px;" onclick="requestDroneDrop('NHAK Kohima')">🚁 Request Drone Drop</button>
+                                <button class="action-btn" style="padding:10px; font-size:12px; background:rgba(255,255,255,0.08); border:1px solid var(--neon-cyan);" onclick="focusHospitalMap([25.67, 94.11], 'NHAK Kohima')">📍 View Map</button>
+                            </div>
+                        </div>
+
+                        <!-- Hospital 7 -->
+                        <div class="hospital-card" data-name="tawang extreme altitude medical base arunachal drone vtol pad">
+                            <div class="hospital-title">
+                                <span>🏥 Tawang Altitude Base</span>
+                                <span class="badge-drone" style="font-size:11px; font-weight:800; font-family:var(--font-data); padding:4px 8px; border-radius:4px;">EXTREME ALTITUDE 13,700 FT</span>
+                            </div>
+                            <div class="hospital-location">📍 Tawang Sector, Arunachal Pradesh</div>
+                            <div class="hospital-stats-list">
+                                <div><span>VTOL DRONE DOCK:</span> <strong style="color:var(--neon-purple);">SKY-LIFTER HUB</strong></div>
+                                <div><span>PORTABLE CYLINDERS:</span> <strong>850 Cryo Cylinders</strong></div>
+                                <div><span>MILITARY LINK:</span> <strong style="color:var(--neon-green);">BRO &amp; ARMY CONNECTED</strong></div>
+                                <div><span>EMERGENCY HELPLINE:</span> <strong>+91 3794-222222</strong></div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="action-btn" style="flex:1; padding:10px; font-size:12px;" onclick="requestDroneDrop('Tawang Altitude Base')">🚁 Request Drone Drop</button>
+                                <button class="action-btn" style="padding:10px; font-size:12px; background:rgba(255,255,255,0.08); border:1px solid var(--neon-cyan);" onclick="focusHospitalMap([27.58, 91.86], 'Tawang Base')">📍 View Map</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 5: AI INSTANT CARGO BOOKING -->
+            <div id="uview-booking" class="content-view">
+                <div class="glass-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><span style="font-size:26px;">📦</span> AI Cargo Booking &amp; Rate Estimator</div>
+                        <span style="font-size:12px; color:var(--neon-cyan); font-family:var(--font-data); font-weight:800;">AI SMART DISPATCH ENGINES</span>
+                    </div>
+
+                    <p style="color:var(--text-muted); margin-bottom:20px; font-size:14px;">
+                        Book emergency medical cold-chain supplies, food relief, or heavy equipment across North East mountain terrains:
+                    </p>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Cargo Category</label>
+                            <select id="book-cargo" class="form-control">
+                                <option value="vaccines">Medical Cold-Chain Vaccines (2°C - 8°C)</option>
+                                <option value="oxygen">Liquid Medical Oxygen Tanker (-182°C)</option>
+                                <option value="food">FCI Essential Food Grains Relief</option>
+                                <option value="solar">Solar Energy Infrastructure</option>
+                                <option value="petroleum">Fuel &amp; Energy Carrier</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Origin Hub</label>
+                            <select id="book-origin" class="form-control">
+                                <option value="Guwahati">Guwahati Central Hub (Assam)</option>
+                                <option value="Silchar">Silchar Cargo Hub (Barak Valley)</option>
+                                <option value="Gangtok">Gangtok Airbase (Sikkim)</option>
+                                <option value="Itanagar">Itanagar Freight Yard (Arunachal)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Destination Sector</label>
+                            <select id="book-dest" class="form-control">
+                                <option value="Shillong">NEIGRIHMS Hospital (Shillong)</option>
+                                <option value="Nathu La">Nathu La Border Sector (14,140 ft)</option>
+                                <option value="Tawang">Tawang High-Altitude Base (13,700 ft)</option>
+                                <option value="Imphal">Imphal FCI Storage Depot (Manipur)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Payload Weight (Tons)</label>
+                            <input type="number" id="book-weight" class="form-control" value="5.0" min="0.1" max="25" step="0.5">
+                        </div>
+                    </div>
+
+                    <button class="action-btn" onclick="calculateCargoQuote()" style="width:100%; padding:16px;">
+                        ⚡ Calculate AI Delivery Quote &amp; Recommendation
+                    </button>
+
+                    <div id="booking-quote-result" style="display:none; margin-top:20px; background:rgba(3,7,18,0.85); border:1.5px solid var(--neon-green); border-radius:12px; padding:20px;">
+                        <h4 style="color:var(--neon-green); font-size:18px; margin-bottom:10px;">✅ AI DISPATCH RECOMMENDATION GENERATED</h4>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; font-family:var(--font-data); font-size:13px;">
+                            <div>ESTIMATED COST: <strong id="quote-cost" style="color:#fff;">₹14,500</strong></div>
+                            <div>ESTIMATED TIME: <strong id="quote-time" style="color:var(--neon-cyan);">2h 45m</strong></div>
+                            <div>RECOMMENDED VEHICLE: <strong id="quote-veh" style="color:var(--neon-amber);">Heavy 4x4 Cold-Chain Convoy</strong></div>
+                            <div>AI RISK HAZARD: <strong style="color:var(--neon-green);">LOW HAZARD (SAFE)</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 6: MOUNTAIN PASS HAZARD FEED -->
+            <div id="uview-hazards" class="content-view">
+                <div class="glass-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><span style="font-size:26px;">🏔️</span> Mountain Pass Live Weather &amp; Hazard Feed</div>
+                        <span style="font-size:12px; color:var(--neon-cyan); font-family:var(--font-data); font-weight:800;">LIVE METEOROLOGICAL TELEMETRY</span>
+                    </div>
+
+                    <div class="hazard-grid">
+                        
+                        <div class="hazard-card">
+                            <div class="pass-header">
+                                <div class="pass-title">🏔️ Nathu La Pass (Sikkim)</div>
+                                <div class="hazard-badge badge-warn">MODERATE FOG</div>
+                            </div>
+                            <div style="font-family:var(--font-data); font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:8px;">
+                                <div>ELEVATION: <strong>14,140 FT</strong></div>
+                                <div>TEMPERATURE: <strong>-2.4°C</strong></div>
+                                <div>WIND SPEED: <strong>38 km/h</strong></div>
+                                <div>SLOPE STABILITY: <strong style="color:var(--neon-amber);">92% SAFE</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="hazard-card">
+                            <div class="pass-header">
+                                <div class="pass-title">🏔️ Sela Pass (Arunachal)</div>
+                                <div class="hazard-badge badge-danger">SNOW HAZARD</div>
+                            </div>
+                            <div style="font-family:var(--font-data); font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:8px;">
+                                <div>ELEVATION: <strong>13,700 FT</strong></div>
+                                <div>TEMPERATURE: <strong>-5.1°C</strong></div>
+                                <div>SNOW ACCUMULATION: <strong>14 cm</strong></div>
+                                <div>CONVOY ALERT: <strong style="color:var(--neon-red);">CHAINS REQUIRED</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="hazard-card">
+                            <div class="pass-header">
+                                <div class="pass-title">🌧️ Dawki Corridor (Meghalaya)</div>
+                                <div class="hazard-badge badge-safe">CLEAR PASSAGE</div>
+                            </div>
+                            <div style="font-family:var(--font-data); font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:8px;">
+                                <div>ELEVATION: <strong>4,900 FT</strong></div>
+                                <div>RAINFALL: <strong>12.4 mm/hr</strong></div>
+                                <div>VISIBILITY: <strong>850 meters</strong></div>
+                                <div>CORRIDOR STATUS: <strong style="color:var(--neon-green);">OPEN EXPRESS</strong></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 7: EMERGENCY SOS BEACON -->
+            <div id="uview-sos" class="content-view">
+                <div class="glass-card">
+                    <div class="panel-header">
+                        <div class="panel-title"><span style="font-size:26px;">🚨</span> Driver &amp; Convoy Emergency SOS Beacon</div>
+                        <span style="font-size:12px; color:var(--neon-red); font-family:var(--font-data); font-weight:800;">PRIORITY EMERGENCY NETWORK</span>
+                    </div>
+
+                    <div class="sos-box">
+                        <h3 style="font-size:24px; color:#fff; font-weight:900;">MOUNTAIN PASS EMERGENCY SOS TRIGGER</h3>
+                        <p style="color:var(--text-muted); max-width:550px; margin:10px auto 20px;">
+                            Pressing the SOS button instantly broadcasts your exact GPS coordinates, altitude, and vehicle ID to the Tactical Admin Command Center and dispatches nearest rescue drones.
+                        </p>
+
+                        <button class="sos-btn-big" onclick="triggerUserSOS()">
+                            <span>🚨</span>
+                            <span>TRIGGER SOS</span>
+                        </button>
+
+                        <div id="sos-status-msg" style="display:none; font-family:var(--font-data); color:var(--neon-green); font-size:14px; font-weight:800; margin-top:16px;">
+                            ✅ EMERGENCY SOS BROADCASTED TO DISPATCH COMMAND! PRIORITY GREEN WAVE DISPATCHED.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- FLOATING AI CHATBOT WIDGET -->
+    <div id="chatbot-trigger" onclick="toggleChatbotModal()" title="Open AI Logistics Assistant">
+        💬
+    </div>
+
+    <div id="chatbot-modal">
+        <div class="chat-header">
+            <div class="chat-header-title">
+                <span style="font-size:20px;">🤖</span>
+                <div>
+                    <div>AI NER Logistics Assistant</div>
+                    <div style="font-size:10px; font-weight:500; opacity:0.9;">● Online • Instant Help</div>
+                </div>
+            </div>
+            <button class="chat-close-btn" onclick="toggleChatbotModal()">✕</button>
+        </div>
+
+        <div class="chat-body" id="chat-body-messages">
+            <div class="chat-msg bot">
+                👋 Hello! I am your <strong>NER Smart Logistics AI Assistant</strong>. How can I help you today?
+                <br><br>
+                You can ask me to track a vaccine shipment, locate nearby emergency hospitals, check mountain pass weather, or calculate cargo rates!
+            </div>
+        </div>
+
+        <div class="chat-quick-chips">
+            <span class="qchip" onclick="sendQuickChat('Track AS-01-EC-9082')">🔍 Track Vaccines</span>
+            <span class="qchip" onclick="sendQuickChat('Nearest hospital in Shillong')">🏥 Shillong Hospital</span>
+            <span class="qchip" onclick="sendQuickChat('Sela Pass weather')">🏔️ Sela Pass Weather</span>
+            <span class="qchip" onclick="sendQuickChat('Book emergency oxygen delivery')">❄️ Book Oxygen</span>
+        </div>
+
+        <div class="chat-footer">
+            <input type="text" id="chat-input-field" class="chat-input" placeholder="Type your question..." onkeypress="handleChatKeyPress(event)">
+            <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // LIVE CLOCK UPDATE
+        function updateLiveClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-IN', { hour12: false }) + " IST";
+            const el = document.getElementById('live-clock');
+            if (el) el.innerText = timeStr;
+        }
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
+
+        function switchUserTab(tabId) {
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.content-view').forEach(view => view.classList.remove('active'));
+            
+            const btn = document.getElementById(`utab-${tabId}`);
+            const view = document.getElementById(`uview-${tabId}`);
+            if (btn) btn.classList.add('active');
+            if (view) view.classList.add('active');
+
+            if (tabId === 'planner') {
+                setTimeout(() => { if (userMap) userMap.invalidateSize(); }, 250);
+            }
+        }
+
+        // EVENT FILTERING
+        function filterEvents(cat, elem) {
+            document.querySelectorAll('#uview-events .chip').forEach(c => c.classList.remove('active'));
+            if (elem) elem.classList.add('active');
+
+            const cards = document.querySelectorAll('.event-card');
+            cards.forEach(card => {
+                if (cat === 'all' || card.dataset.category === cat) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // HOSPITAL SEARCH
+        function searchHospitals() {
+            const query = document.getElementById('hospital-search').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.hospital-card');
+
+            cards.forEach(card => {
+                const name = card.dataset.name.toLowerCase();
+                if (name.includes(query)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function requestDroneDrop(hospitalName) {
+            alert(`🚁 VTOL DRONE AIR-DROP REQUESTED!\n\nDestination: ${hospitalName}\nPriority: Emergency Medical Response\nEstimated Air-Time: 18 Minutes.\n\nCoordinates sent to Admin Command Center!`);
+            speakText(`Emergency drone air drop dispatched for ${hospitalName}`);
+        }
+
+        function focusHospitalMap(coords, title) {
+            switchUserTab('planner');
+            if (userMap) {
+                userMap.setView(coords, 12);
+                L.marker(coords).addTo(userMap).bindPopup(`<b>${title}</b><br>Emergency Drone Pad Ready`).openPopup();
+                speakText(`Map focused on ${title}`);
+            }
+        }
+
+        function quickTrack(code) {
+            document.getElementById('track-input').value = code;
+            executeTrackLookup();
+        }
+
+        function executeTrackLookup() {
+            const code = document.getElementById('track-input').value.trim();
+            const card = document.getElementById('track-result-card');
+            
+            if (code.includes('OX')) {
+                document.getElementById('tr-title').innerText = 'AS-01-OX-4011';
+                document.getElementById('tr-desc').innerText = 'Northeast Medical Oxygen Supply • 18 Tons Liquid Medical O₂';
+                document.getElementById('tr-speed').innerText = '54 km/h';
+                document.getElementById('tr-eta').innerText = '2h 10m';
+                document.getElementById('tr-temp').innerText = '-182.4°C (CRYOGENIC SAFE)';
+            } else if (code.includes('DRONE')) {
+                document.getElementById('tr-title').innerText = 'NER-DRONE-01';
+                document.getElementById('tr-desc').innerText = 'SkyLifter Heavy VTOL Medical Drop • High Altitude Rescue';
+                document.getElementById('tr-speed').innerText = '120 km/h';
+                document.getElementById('tr-eta').innerText = '25m';
+                document.getElementById('tr-temp').innerText = 'AIRBORNE - 12,500 FT';
+            } else {
+                document.getElementById('tr-title').innerText = code;
+                document.getElementById('tr-desc').innerText = 'Assam Medical Transport Hub • Cold-Chain Vaccine Transit';
+                document.getElementById('tr-speed').innerText = '46 km/h';
+                document.getElementById('tr-eta').innerText = '1h 15m';
+                document.getElementById('tr-temp').innerText = '4.1°C (OPTIMAL)';
+            }
+
+            card.classList.add('active');
+        }
+
+        let voiceActive = true;
+        function toggleVoiceSpeech() {
+            voiceActive = !voiceActive;
+            const btn = document.getElementById('btn-voice-speech');
+            if (voiceActive) {
+                btn.innerHTML = '<span>🔊</span> Voice Guidance: ON';
+                btn.style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
+                speakText("Voice navigation assistant activated.");
+            } else {
+                btn.innerHTML = '<span>🔇</span> Voice Guidance: OFF';
+                btn.style.background = 'rgba(255,255,255,0.08)';
+            }
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window && voiceActive) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // REALISTIC LEAFLET MAP & TURN-BY-TURN ROUTING ENGINE
+        let userMap = null;
+        let activeTileLayer = null;
+        let routePolyline = null;
+        let routeMarkers = [];
+
+        // MAP TILE SOURCES
+        const tileLayers = {
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; World Imagery Satellite HD',
+                maxZoom: 19
+            }),
+            dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; CartoDB Dark Matter',
+                maxZoom: 19
+            }),
+            street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            })
+        };
+
+        // PRESET ROUTES WITH REAL TURN-BY-TURN DIRECTIONS
+        const fullNavRoutes = {
+            "guwahati-shillong": {
+                center: [25.85, 91.80],
+                zoom: 10,
+                dist: "98.4 km",
+                time: "2h 15m",
+                elev: "180m ➔ 1,490m (+1,310m Climb)",
+                coords: [
+                    [26.18, 91.75], // Guwahati Hub
+                    [25.90, 91.88], // Nongpoh
+                    [25.68, 91.90], // Umiam Lake
+                    [25.57, 91.88]  // NEIGRIHMS Shillong
+                ],
+                steps: [
+                    { icon: "🚩", title: "Depart Origin", desc: "Start from Guwahati Freight Hub onto NH-27 East bound for Shillong." },
+                    { icon: "🛣️", title: "NH-6 Shillong Expressway", desc: "Merge onto NH-6. Ascend Guwahati-Shillong Highway mountain pass. Watch for heavy truck traffic." },
+                    { icon: "⛰️", title: "Nongpoh Checkpoint (KM 48)", desc: "Pass Nongpoh Cold-Chain telemetry station. Check vaccine refrigeration status." },
+                    { icon: "🌧️", title: "Umiam Lake Viaduct Pass", desc: "Proceed along Umiam Lake curve. Reduce speed to 40 km/h on wet road segments." },
+                    { icon: "🏁", title: "Arrival at Destination", desc: "Take Mawdiangdiang exit. Arrive at NEIGRIHMS Shillong Vaccine & Trauma Depot." }
+                ]
+            },
+            "gangtok-nathula": {
+                center: [27.35, 88.68],
+                zoom: 11,
+                dist: "54.2 km",
+                time: "2h 10m",
+                elev: "1,650m ➔ 4,310m (14,140 ft)",
+                coords: [
+                    [27.33, 88.61], // Gangtok Airbase
+                    [27.35, 88.66], // Kyongnosla
+                    [27.37, 88.71], // Tsomgo Lake
+                    [27.38, 88.75]  // Nathu La Pass
+                ],
+                steps: [
+                    { icon: "🚩", title: "Depart Gangtok Airbase", desc: "Start altitude transport from Gangtok Supply Depot." },
+                    { icon: "🏔️", title: "Kyongnosla Sanctuary Pass", desc: "Equip anti-skid tire chains. Sub-zero temperatures (-2°C) and thick fog." },
+                    { icon: "❄️", title: "Tsomgo Lake Sector (12,400 ft)", desc: "Maintain convoy distance of 50m. Army priority escort active." },
+                    { icon: "🏁", title: "Nathu La Border Sector", desc: "Arrive at Nathu La Pass (14,140 ft). Unload cryogenic medical oxygen cylinders." }
+                ]
+            },
+            "guwahati-tawang": {
+                center: [27.45, 92.00],
+                zoom: 9,
+                dist: "442 km",
+                time: "9h 45m",
+                elev: "55m ➔ 4,175m (13,700 ft)",
+                coords: [
+                    [26.18, 91.75], // Guwahati
+                    [26.63, 92.79], // Tezpur
+                    [27.01, 92.63], // Bhalukpong
+                    [27.50, 92.12], // Sela Pass
+                    [27.58, 91.86]  // Tawang Base
+                ],
+                steps: [
+                    { icon: "🚩", title: "Guwahati Central Freight", desc: "Cross Brahmaputra Kaliabhomora Bridge via NH-15." },
+                    { icon: "🌉", title: "Tezpur Transit Depot", desc: "Refuel & telematics sensor calibration." },
+                    { icon: "⛰️", title: "Bhalukpong Arunachal Gate", desc: "Enter Kameng sector. Steep mountain slope ascent." },
+                    { icon: "🏔️", title: "Sela Pass High Altitude (13,700 ft)", desc: "Heavy snow accumulation. Low gear convoy passage." },
+                    { icon: "🏁", title: "Tawang Medical Base", desc: "Arrival at Tawang High-Altitude Base & VTOL Drone Dock." }
+                ]
+            },
+            "silchar-imphal": {
+                center: [24.78, 93.30],
+                zoom: 9,
+                dist: "260.5 km",
+                time: "6h 30m",
+                elev: "25m ➔ 780m (2,550 ft)",
+                coords: [
+                    [24.78, 92.79], // Silchar Hub
+                    [24.81, 93.12], // Jiribam
+                    [24.83, 93.55], // Noney Bridge
+                    [24.81, 93.94]  // Imphal Depot
+                ],
+                steps: [
+                    { icon: "🚩", title: "Depart Silchar Cargo Hub", desc: "Load FCI essential food grains and vaccines onto 4x4 heavy convoy." },
+                    { icon: "🌉", title: "Jiribam Barak River Bridge", desc: "Cross Assam-Manipur border checkpoint." },
+                    { icon: "⛰️", title: "Noney Hill Corridor (NH-37)", desc: "Proceed along BRO-maintained mountain cut road." },
+                    { icon: "🏁", title: "Imphal FCI Central Depot", desc: "Arrival at Imphal Logistics Distribution Yard." }
+                ]
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Initialize Leaflet map with Realistic Esri Satellite HD
+            userMap = L.map('map-user', {
+                center: fullNavRoutes["guwahati-shillong"].center,
+                zoom: fullNavRoutes["guwahati-shillong"].zoom,
+                zoomControl: true
+            });
+
+            activeTileLayer = tileLayers.satellite;
+            activeTileLayer.addTo(userMap);
+
+            updateCustomRouteNav();
+        });
+
+        function switchMapTileLayer(type) {
+            if (activeTileLayer) userMap.removeLayer(activeTileLayer);
+
+            document.getElementById('btn-tile-sat').style.background = 'rgba(255,255,255,0.08)';
+            document.getElementById('btn-tile-dark').style.background = 'rgba(255,255,255,0.08)';
+            document.getElementById('btn-tile-street').style.background = 'rgba(255,255,255,0.08)';
+
+            if (type === 'satellite') {
+                activeTileLayer = tileLayers.satellite;
+                document.getElementById('btn-tile-sat').style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
+                document.getElementById('hud-tile-name').innerText = 'Esri Realistic Satellite HD';
+            } else if (type === 'dark') {
+                activeTileLayer = tileLayers.dark;
+                document.getElementById('btn-tile-dark').style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
+                document.getElementById('hud-tile-name').innerText = 'CartoDB Cyber Radar Dark';
+            } else {
+                activeTileLayer = tileLayers.street;
+                document.getElementById('btn-tile-street').style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
+                document.getElementById('hud-tile-name').innerText = 'OpenStreetMap Topo Hybrid';
+            }
+
+            activeTileLayer.addTo(userMap);
+        }
+
+        function updateCustomRouteNav() {
+            const origin = document.getElementById('nav-origin-select').value;
+            const dest = document.getElementById('nav-dest-select').value;
+            
+            let key = "guwahati-shillong";
+            if (origin === 'gangtok' || dest === 'nathula') key = "gangtok-nathula";
+            else if (dest === 'tawang') key = "guwahati-tawang";
+            else if (origin === 'silchar' || dest === 'imphal') key = "silchar-imphal";
+
+            const routeData = fullNavRoutes[key];
+            if (!routeData) return;
+
+            // Clear old map layers
+            if (routePolyline) userMap.removeLayer(routePolyline);
+            routeMarkers.forEach(m => userMap.removeLayer(m));
+            routeMarkers = [];
+
+            // Draw Satellite Glowing Polyline
+            routePolyline = L.polyline(routeData.coords, {
+                color: '#38bdf8',
+                weight: 6,
+                opacity: 0.9,
+                dashArray: '10, 5'
+            }).addTo(userMap);
+
+            userMap.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
+
+            // Add Origin & Dest Markers
+            const startMarker = L.marker(routeData.coords[0]).addTo(userMap).bindPopup(`<b>START:</b> ${routeData.steps[0].title}`);
+            const endMarker = L.marker(routeData.coords[routeData.coords.length - 1]).addTo(userMap).bindPopup(`<b>DESTINATION:</b> ${routeData.steps[routeData.steps.length - 1].title}`);
+            routeMarkers.push(startMarker, endMarker);
+
+            // Update Info HUD
+            document.getElementById('hud-route-dist').innerText = routeData.dist;
+            document.getElementById('hud-route-time').innerText = routeData.time;
+            document.getElementById('hud-route-elev').innerText = routeData.elev;
+            document.getElementById('nav-step-count').innerText = `${routeData.steps.length} STEPS`;
+
+            // Populate Turn-by-Turn Directions List
+            const dirContainer = document.getElementById('directions-list-container');
+            dirContainer.innerHTML = '';
+
+            routeData.steps.forEach((step, idx) => {
+                const item = document.createElement('div');
+                item.className = 'turn-step-item';
+                item.innerHTML = `
+                    <div class="turn-icon-box">${step.icon}</div>
+                    <div>
+                        <div class="turn-step-title">Step ${idx + 1}: ${step.title}</div>
+                        <div class="turn-step-desc">${step.desc}</div>
+                    </div>
+                `;
+                dirContainer.appendChild(item);
+            });
+        }
+
+        function startSimulatedNavigation() {
+            const origin = document.getElementById('nav-origin-select').value;
+            const dest = document.getElementById('nav-dest-select').value;
+            let key = "guwahati-shillong";
+            if (origin === 'gangtok' || dest === 'nathula') key = "gangtok-nathula";
+            else if (dest === 'tawang') key = "guwahati-tawang";
+            else if (origin === 'silchar' || dest === 'imphal') key = "silchar-imphal";
+
+            const r = fullNavRoutes[key];
+            const msg = `Turn by turn navigation started for ${r.steps[0].title} to ${r.steps[r.steps.length - 1].title}. Total distance ${r.dist}, estimated drive time ${r.time}. ${r.steps[1].desc}`;
+            speakText(msg);
+            alert(`🧭 TURN-BY-TURN NAVIGATION STARTED!\n\n${r.steps[0].title} ➔ ${r.steps[r.steps.length - 1].title}\nDistance: ${r.dist} | ETA: ${r.time}\n\nVoice turn-by-turn guidance active!`);
+        }
+
+        function calculateCargoQuote() {
+            const weight = parseFloat(document.getElementById('book-weight').value || 1);
+            const cargo = document.getElementById('book-cargo').value;
+            const result = document.getElementById('booking-quote-result');
+            
+            let cost = Math.round(weight * 2800 + 4500);
+            document.getElementById('quote-cost').innerText = `₹${cost.toLocaleString('en-IN')}`;
+            document.getElementById('quote-time').innerText = `${Math.round(weight * 0.4 + 2)}h 15m`;
+            
+            if (cargo === 'vaccines') {
+                document.getElementById('quote-veh').innerText = 'Refrigerated Cold-Chain Truck + Backup Drone';
+            } else if (cargo === 'oxygen') {
+                document.getElementById('quote-veh').innerText = 'Cryogenic Oxygen Tanker (18T)';
+            } else {
+                document.getElementById('quote-veh').innerText = 'Heavy 4x4 Convoy Escort';
+            }
+
+            result.style.display = 'block';
+            speakText("AI dispatch quote successfully computed.");
+        }
+
+        function triggerUserSOS() {
+            const msg = document.getElementById('sos-status-msg');
+            msg.style.display = 'block';
+            speakText("Emergency S.O.S. triggered! Dispatching emergency green wave and rescue units.");
+        }
+
+        // FLOATING AI CHATBOT LOGIC
+        function toggleChatbotModal() {
+            const modal = document.getElementById('chatbot-modal');
+            modal.classList.toggle('active');
+        }
+
+        function openChatbotModal() {
+            const modal = document.getElementById('chatbot-modal');
+            modal.classList.add('active');
+        }
+
+        function handleChatKeyPress(e) {
+            if (e.key === 'Enter') sendChatMessage();
+        }
+
+        function sendQuickChat(text) {
+            document.getElementById('chat-input-field').value = text;
+            sendChatMessage();
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input-field');
+            const query = input.value.trim();
+            if (!query) return;
+
+            const body = document.getElementById('chat-body-messages');
+
+            // Add user message
+            const userDiv = document.createElement('div');
+            userDiv.className = 'chat-msg user';
+            userDiv.innerText = query;
+            body.appendChild(userDiv);
+            input.value = '';
+
+            body.scrollTop = body.scrollHeight;
+
+            // Generate AI Response
+            setTimeout(() => {
+                const botDiv = document.createElement('div');
+                botDiv.className = 'chat-msg bot';
+                botDiv.innerHTML = getAIResponse(query);
+                body.appendChild(botDiv);
+                body.scrollTop = body.scrollHeight;
+                
+                const plainText = botDiv.innerText.replace(/<[^>]*>?/gm, '');
+                speakText(plainText.slice(0, 100));
+            }, 600);
+        }
+
+        function getAIResponse(q) {
+            const text = q.toLowerCase();
+            if (text.includes('track') || text.includes('as-01') || text.includes('drone')) {
+                return `📦 <strong>Shipment Tracker Alert:</strong><br>Found active transport <strong>AS-01-EC-9082</strong> (5,000 Vaccine Doses) currently on <strong>NH-6 Shillong Pass</strong> at 46 km/h. Temp: 4.1°C (Optimal). ETA: 1h 15m.`;
+            } else if (text.includes('hospital') || text.includes('shillong') || text.includes('guwahati') || text.includes('doctor')) {
+                return `🏥 <strong>Apex Hospital Found:</strong><br><strong>NEIGRIHMS Shillong</strong> has an active VTOL Drone Landing Pad and 32,000L Oxygen Storage. You can request a direct drone drop from the <em>Apex Hospitals</em> tab!`;
+            } else if (text.includes('weather') || text.includes('sela') || text.includes('nathu') || text.includes('snow')) {
+                return `🏔️ <strong>Mountain Weather Update:</strong><br><strong>Sela Pass (Arunachal)</strong> is experiencing -5.1°C temperature with 14 cm snow accumulation. Tire chains are mandatory for heavy convoys.`;
+            } else if (text.includes('oxygen') || text.includes('book') || text.includes('rate') || text.includes('cost')) {
+                return `❄️ <strong>Cryogenic & Cargo Booking:</strong><br>Liquid Medical Oxygen (18 Tons) from Guwahati Hub is available for ₹14,500 with guaranteed green-wave transit escort.`;
+            } else if (text.includes('sos') || text.includes('help') || text.includes('emergency')) {
+                return `🚨 <strong>Emergency Response:</strong><br>If you are stranded on a mountain pass, press the <strong>RED SOS BUTTON</strong> in the navigation sidebar to immediately broadcast GPS coordinates to rescue drones!`;
+            } else {
+                return `⚡ <strong>AI Assistant Reply:</strong><br>I have processed your query: "<em>${q}</em>". Our smart dispatch network is operating 24/7 across all 8 North Eastern states. How else may I assist your voyage?`;
+            }
+        }
+
+        // BACKGROUND CANVAS ANIMATION
+        const canvas = document.getElementById('bg-canvas-user');
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        const particles = Array.from({ length: 50 }, () => ({
+            x: Math.random() * width, y: Math.random() * height,
+            radius: Math.random() * 2 + 1,
+            vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
+            color: 'rgba(56, 189, 248, 0.4)'
+        }));
+
+        function drawParticles() {
+            ctx.clearRect(0, 0, width, height);
+            particles.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > width) p.vx *= -1;
+                if (p.y < 0 || p.y > height) p.vy *= -1;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+            });
+            requestAnimationFrame(drawParticles);
+        }
+        drawParticles();
+    </script>
+</body>
+</html>

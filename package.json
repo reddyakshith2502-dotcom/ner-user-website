@@ -1,0 +1,12 @@
+{
+  "name": "ner-user-portal",
+  "version": "1.0.0",
+  "description": "NER Smart Logistics User & Consignor Portal - Crazy & Ultimate Ideas",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": ["logistics", "user-portal", "3d-telemetry", "route-planner"],
+  "author": "NER Smart Logistics",
+  "license": "MIT"
+}
